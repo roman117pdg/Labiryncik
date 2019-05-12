@@ -1,0 +1,548 @@
+<html>
+<head>
+<script type="text/javascript">
+var angle = 20.0;
+var angleX =0.0;
+var angleY = 0.0;
+var angleZ = 0.0;
+var translateX = -9.0;
+var translateY = 0.0;
+var translateZ = 25.0;
+var angleVZ = 180.0;
+var angleVY = 180.0;
+var angleVX = 180.0;
+var translateVX = 5.0;
+var translateVY = 0.0;
+var translateVZ = -45.0;
+var gl;
+var shaderProgram;
+var uPMatrix;
+var vertexPositionBufferGuy;
+var vertexPositionBufferCube;
+var vertexColorBufferGuy;
+var vertexColorBufferCube;
+
+
+function startGL (){
+	
+	//gl.enable(gl.DEPTH_TEST)
+	let canvas = document.getElementById("3dcanvas");
+	
+	try{
+	gl = canvas.getContext("experimental-webgl");
+	}
+	catch(e)
+	{
+	}
+	if(!gl) alert("cos nie tak!!!!");
+	gl.viewportWidth = canvas.width;
+	gl.viewportHeight = canvas.height;
+	//init Shaders
+	const vertexShaderSource =`
+	precision highp float;
+	varying vec3 vColor;
+	attribute vec3 aVertexPosition;
+	attribute vec3 aVertexColor;
+	uniform mat4 uMMatrix;
+	uniform mat4 uVMatrix;
+	uniform mat4 uPMatrix;
+	uniform float uSmak;
+
+	void main(void){
+		gl_Position = uPMatrix * uVMatrix * uMMatrix * vec4(aVertexPosition,1.0);
+        vColor = aVertexColor;
+	}
+	`;
+	const fragmentShaderSource =`
+	precision highp float;
+	varying vec3 vColor;
+	void main(void){
+		gl_FragColor = vec4(vColor,1.0);
+
+	}
+	`;
+
+	let fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+	let vertexShader = gl.createShader(gl.VERTEX_SHADER);
+	gl.shaderSource(fragmentShader,fragmentShaderSource);
+	gl.shaderSource(vertexShader,vertexShaderSource);
+	gl.compileShader(fragmentShader);
+	gl.compileShader(vertexShader);
+	if(!gl.getShaderParameter(fragmentShader,gl.COMPILE_STATUS)) alert(gl.getShaderInfoLog(fragmentShader));
+	if(!gl.getShaderParameter(vertexShader,gl.COMPILE_STATUS)) alert(gl.getShaderInfoLog(vertexShader));
+	shaderProgram = gl.createProgram();
+	gl.attachShader(shaderProgram, vertexShader);
+	gl.attachShader(shaderProgram, fragmentShader);
+	gl.linkProgram(shaderProgram);
+	if(!gl.getProgramParameter(shaderProgram,gl.LINK_STATUS)) alert("error");
+
+	//wspolrzedne dla ludzika
+	const vertexPositionGuy = [
+		//1
+		1,0,0, 1,-2,0, 3,-2,0,
+		3,-2,0, 3,0,0, 1,0,0,
+		//2
+		5,0,0, 5,-2,0, 7,-2,0,
+		7,-2,0, 7,0,0, 5,0,0,
+		//3
+		2,-2,0, 2,-4,0, 4,-4,0,
+		4,-4,0, 4,-2,0, 2,-2,0,
+		//4
+		4,-2,0, 4,-4,0, 6,-4,0,
+		6,-4,0, 6,-2,0, 4,-2,0,
+		//5
+		0,-5,0, 0,-7,0, 2,-7,0,
+		2,-7,0, 2,-5,0, 0,-5,0,
+		//6
+		2,-4,0, 2,-8,0, 6,-8,0,
+		6,-8,0, 6,-4,0, 2,-4,0,
+		//7
+		6,-5,0, 6,-7,0, 8,-7,0,
+		8,-7,0, 8,-5,0, 6,-5,0,
+		//8
+		3,-8,0, 3,-10,0, 5,-10,0,
+		5,-10,0, 5,-8,0, 3,-8,0
+	];
+
+	//wspolrzedne dla kosteczki
+    const vertexPositionCube= [
+
+		0,0,0, 10,0,0, 10,-10,0,
+		0,0,0, 10,-10,0, 0,-10,0,
+
+		10,0,0, 10,0,10, 10,-10,10,
+		10,0,0, 10,-10,10, 10,-10,0,
+
+		0,0,10, 0,0,0, 0,-10,0,
+		0,0,10, 0,-10,0, 0,-10,10,
+
+		0,-10,0, 10,-10,0, 10,-10,10,
+		0,-10,0, 10,-10,10, 0,-10,10,
+
+		0,0,10, 10,0,10, 10,0,0,
+		0,0,10, 10,0,0, 0,0,0,
+
+		0,-10,10, 10,0,10, 10,-10,10,
+		0,-10,10, 0,0,10, 10,0,10
+	];
+
+	//stworzenie bufora
+	vertexPositionBufferCube = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBufferCube);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositionCube),gl.STATIC_DRAW);
+	vertexPositionBufferCube.itemSize = 3;
+	vertexPositionBufferCube.numItems = 12;
+
+    vertexPositionBufferGuy = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBufferGuy);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositionGuy),gl.STATIC_DRAW);
+	vertexPositionBufferGuy.itemSize = 3;
+	vertexPositionBufferGuy.numItems = 16;
+
+
+	//kolorki dla ludzika
+	const aVertexColorGuy = [
+
+	    1,0,1, 1,0,1, 1,0,1,
+		1,0,1, 1,0,1, 1,0,1,
+
+		1,0,1, 1,0,1, 1,0,1,
+		1,0,1, 1,0,1, 1,0,1,
+
+		0,1,1, 0,1,1, 0,1,1,
+		0,1,1, 0,1,1, 0,1,1,
+
+		0,1,1, 0,1,1, 0,1,1,
+		0,1,1, 0,1,1, 0,1,1,
+
+		1,0,1, 1,0,1, 1,0,1,
+		1,0,1, 1,0,1, 1,0,1,
+
+		0,0,0, 0,0,0, 0,0,0,
+		0,0,0, 0,0,0, 0,0,0,
+
+		1,0,1, 1,0,1, 1,0,1,
+		1,0,1, 1,0,1, 1,0,1,
+		
+		1,0,0, 1,0,0, 1,0,0,
+		1,0,0, 1,0,0, 1,0,0
+	];
+	
+	//kolorki dla kosteczki
+    const aVertexColorCube = [
+
+		0,0,1, 0,0,1, 0,0,1,
+		0,0,1, 0,0,1, 0,0,1,
+
+        0,0,1, 0,0,1, 0,0,1,
+		0,0,1, 0,0,1, 0,0,1,
+
+        0,0,1, 0,0,1, 0,0,1,
+		0,0,1, 0,0,1, 0,0,1,
+
+        0,0,1, 0,0,1, 0,0,1,
+		0,0,1, 0,0,1, 0,0,1,
+
+		0,0,1, 0,0,1, 0,0,1,
+		0,0,1, 0,0,1, 0,0,1,
+
+        0,0,1, 0,0,1, 0,0,1,
+		0,0,1, 0,0,1, 0,0,1
+    ];
+	//stworzenie bufora
+	vertexColorBufferCube = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBufferCube);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(aVertexColorCube),gl.STATIC_DRAW);
+	vertexColorBufferCube.itemSize = 3;
+	vertexColorBufferCube.numItems = 12;
+
+    vertexColorBufferGuy = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBufferGuy);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(aVertexColorGuy),gl.STATIC_DRAW);
+	vertexColorBufferGuy.itemSize = 3;
+	vertexColorBufferGuy.numItems = 16;
+
+
+	//stworz macierze
+	let aspect = gl.viewportWidth/gl.viewportHeight;
+	let fov =220.0 * Math.PI / 180.;
+	// let fov = 10.0 * Math.PI / 180.;
+	let zFar = 100.0;
+	let zNear = 0.1;
+	uPMatrix = [
+		1.0/(aspect*Math.tan(fov/2)),0,0,0,
+		0,1.0/(Math.tan(fov/2)),0,0,
+		0,1,-(zFar+zNear)/(zFar-zNear),-1,
+		0,0,-(2*zFar*zNear)/(zFar-zNear),0.0
+	];
+
+	tick();
+}
+function MatrixMul(matrix1,matrix2){
+	let matrix0 = [
+		0,0,0,0,
+		0,0,0,0,
+		0,0,0,0,
+		0,0,0,0
+	];
+	for(let i=0; i<4; i++)
+	{
+		for(let j=0; j<4; j++)
+		{
+		matrix0[i*4+j]=0.0;
+			for(let k=0; k<4; k++)
+			{
+				matrix0[i*4+j]+=matrix1[i*4+k]*matrix2[k*4+j];
+			}
+		}
+	}
+	return matrix0;
+}
+function keyevent(e)
+{
+	// kierowanie kamera
+	if(e.keyCode==87) translateVZ+=1; //w
+	if(e.keyCode==83) translateVZ-=1; //s
+	if(e.keyCode==65) translateVX-=1; //a
+	if(e.keyCode==68) translateVX+=1; //d
+	if(e.keyCode==81) angleVY-=1; //q
+	if(e.keyCode==69) angleVY+=1; //e
+	
+	//kierownie ludzikiem
+	if(e.keyCode==38) translateZ-=1; //up
+	if(e.keyCode==40) translateZ+=1; //down
+	if(e.keyCode==37) translateX+=1; //left
+	if(e.keyCode==39) translateX-=1; //right
+}
+
+function tick()
+{
+	let uMMatrix = [
+		1,0,0,0,
+		0,1,0,0,
+		0,0,1,0,
+		0,0,0,1
+	];
+
+	let uMMatrixCube = [
+		1,0,0,0,
+		0,1,0,0,
+		0,0,1,0,
+		0,0,0,1
+	];
+
+	let uMTranslateCastX_plus= [
+		1,0,0,0,
+		0,1,0,0,
+		0,0,1,0,
+		10,0,0,1
+	];
+	let uMTranslateCastX_minus = [
+		1,0,0,0,
+		0,1,0,0,
+		0,0,1,0,
+		-10,0,0,1
+	];
+	
+	let uMTranslateCastZ_plus= [
+		1,0,0,0,
+		0,1,0,0,
+		0,0,1,0,
+		0,0,10,1
+	];
+
+	let uMTranslateCastZ_minus = [
+		1,0,0,0,
+		0,1,0,0,
+		0,0,1,0,
+		0,0,-10,1
+	];
+	
+	let uMTranslateZ = [
+		1,0,0,0,
+		0,1,0,0,
+		0,0,1,0,
+		translateX,translateY,translateZ,1
+	];
+
+	let uMRotZ = [	
+		Math.cos(angleZ*Math.PI/180.0),Math.sin(angleZ*Math.PI/180.0),0,0,
+		-Math.sin(angleZ*Math.PI/180.0),Math.cos(angleZ*Math.PI/180.0),0,0,
+		0,0,1,0,
+		0,0,0,1
+	];
+
+	let uMRotY = [
+		Math.cos(angleY*Math.PI/180.0),-Math.sin(angleY*Math.PI/180.0),0,0,
+		0,1,0,0,
+		Math.sin(angleY*Math.PI/180.0),Math.cos(angleY*Math.PI/180.0),0,0,
+		0,0,0,1
+	];
+
+	let uMRotX = [
+		1,0,0,0,
+		0,Math.cos(angleX*Math.PI/180.0),Math.sin(angleX*Math.PI/180.0),0,
+		0,-Math.sin(angleX*Math.PI/180.0),Math.cos(angleX*Math.PI/180.0),0,
+		0,0,0,1
+	];
+	
+	uMMatrix = MatrixMul(uMMatrix,uMRotX);
+	uMMatrix = MatrixMul(uMMatrix,uMRotY);
+	uMMatrix = MatrixMul(uMMatrix,uMRotZ);
+	uMMatrix = MatrixMul(uMMatrix,uMTranslateZ);
+
+	let uVMatrix = [
+		1,0,0,0,
+		0,1,0,0,
+		0,0,1,0,
+		0,0,10,1
+	];
+
+	let uVRotZ = [
+		Math.cos(angleVZ * Math.PI / 180.0), Math.sin(angleVZ * Math.PI / 180.0), 0, 0,
+		-Math.sin(angleVZ * Math.PI / 180.0), Math.cos(angleVZ * Math.PI / 180.0), 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1
+	];
+
+	let uVRotY = [
+		Math.cos(angleVY * Math.PI / 180.0), 0, -Math.sin(angleVY * Math.PI / 180.0), 0,
+		0, 1, 0, 0,
+		Math.sin(angleVY * Math.PI / 180.0), 0, Math.cos(angleVY * Math.PI / 180.0), 0,
+		0, 0, 0, 1
+	];
+
+	let uVRotX = [
+		1, 0, 0, 0,
+		0, Math.cos(angleVX * Math.PI / 180.0), Math.sin(angleVX * Math.PI / 180.0), 0,
+		0, -Math.sin(angleVX * Math.PI / 180.0), Math.cos(angleVX * Math.PI / 180.0), 0,
+		0, 0, 0, 1
+	];
+
+	let uVTranslate = [
+		1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		translateVX, translateVY, translateVZ, 1
+  	];
+
+
+	uVMatrix = MatrixMul(uVMatrix, uVRotX);
+	uVMatrix = MatrixMul(uVMatrix, uVRotY);
+	uVMatrix = MatrixMul(uVMatrix, uVRotZ);
+	uVMatrix = MatrixMul(uVMatrix, uVTranslate)
+
+
+	// Renderowanie
+	gl.viewport(0,0,gl.viewportWidth,gl.viewportHeight);
+	gl.clearColor(0.5,1.0,0.0,1.0); // R,G,B, nasycenie
+	gl.clear(gl.COLOR_BUFFER_BIT);
+	gl.useProgram(shaderProgram);
+
+
+	//wgraj macierze (pozycje)
+	gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uPMatrix"),false,new Float32Array(uPMatrix));
+	gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uVMatrix"),false,new Float32Array(uVMatrix));
+	
+	//rysuj kosteczke
+	let attribLocPosition = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+	gl.enableVertexAttribArray(attribLocPosition);
+	gl.bindBuffer(gl.ARRAY_BUFFER,vertexPositionBufferCube);
+	gl.vertexAttribPointer(attribLocPosition,vertexPositionBufferCube.itemSize, gl.FLOAT,false,0,0);
+
+	let attribLocColor = gl.getAttribLocation(shaderProgram, "aVertexColor")
+	gl.enableVertexAttribArray(attribLocColor);
+	gl.bindBuffer(gl.ARRAY_BUFFER,vertexColorBufferCube);
+	gl.vertexAttribPointer(attribLocColor,vertexColorBufferCube.itemSize, gl.FLOAT,false,0,0);
+	
+		//rysuj labirynt
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//1
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_plus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//2
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_plus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//3
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_minus);
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_minus);
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_minus);
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_minus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//4
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_plus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//5
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_plus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//6
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_minus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//7
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_minus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//8
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_minus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//9
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_minus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//10
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_minus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//11
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_minus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//12
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_minus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//13
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_minus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//14
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_plus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//15
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_plus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//16
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_plus);
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_plus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//17
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_plus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//18
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_plus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//19
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_plus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//20
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_plus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//21
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_minus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//22
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_minus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//23
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_minus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//24
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_minus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//25
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_plus);
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_plus);
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_plus);
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_plus);
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_plus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//26
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_plus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//27
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_plus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//28
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastZ_plus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//29
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+		uMMatrixCube = MatrixMul(uMMatrixCube,uMTranslateCastX_minus);
+		gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,"uMMatrix"),false,new Float32Array(uMMatrixCube));
+		//30
+		gl.drawArrays(gl.TRIANGLES,0,vertexPositionBufferCube.numItems*vertexPositionBufferCube.itemSize); 
+	
+	//Rysuj ludzika
+	gl.enableVertexAttribArray(attribLocPosition);
+	gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBufferGuy);
+	gl.vertexAttribPointer(attribLocPosition, vertexPositionBufferGuy.itemSize, gl.FLOAT, false, 0, 0);
+	gl.enableVertexAttribArray(attribLocColor);
+	gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBufferGuy);
+	gl.vertexAttribPointer(attribLocColor, vertexColorBufferGuy.itemSize, gl.FLOAT, false, 0, 0);
+				
+	uMVMatrix = MatrixMul(uMMatrix,uMTranslateZ);
+	gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram, "uMMatrix"), false, new Float32Array(uMMatrix));
+	gl.drawArrays(gl.TRIANGLES, 0, vertexColorBufferGuy.numItems * vertexColorBufferGuy.itemSize);
+	
+	setTimeout(tick,0);
+}
+
+</script>
+</head>
+<body onload="startGL()"
+onkeydown="keyevent(event)">
+<canvas id="3dcanvas" style="border:solid rgb(0, 0, 0) 1px;" width="300" height="300"></canvas>
+</body>
+</html>
